@@ -94,8 +94,8 @@ int descKeypoints(boost::circular_buffer<DataFrame> *dataBuffer,  int descType)
     case 4: //AKAZE_:
         descriptor = cv::AKAZE::create();break;
     case 5: // SIFT_:
-        descriptor = cv::SIFT::create();break;
-        //descriptor = cv::xfeatures2d::SIFT::create();break;
+       // descriptor = cv::SIFT::create();break;
+        descriptor = cv::xfeatures2d::SIFT::create();break;
     default:;
         return -1;
     }
@@ -149,8 +149,8 @@ int detKeypointsModern(std::vector<cv::KeyPoint> &keypoints, cv::Mat &img,  int 
     case 5: //AKAZE:
         detector = cv::AKAZE::create();break;
     case 6: //SIFT:
-       detector = cv::SIFT::create();break;
-       //detector = cv::xfeatures2d::SIFT::create();break;
+       //detector = cv::SIFT::create();break;
+       detector = cv::xfeatures2d::SIFT::create();break;
     default: return -1 ;
     }
 
