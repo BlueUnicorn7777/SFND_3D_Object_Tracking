@@ -3,13 +3,6 @@
 
 using namespace std;
 
-float confThreshold = 0.2;
-float nmsThreshold = 0.4;
-vector<string> classes;
-
-string yoloModelConfiguration ;
-string yoloModelWeights ;
-
 // Find best matches for keypoints in two camera images based on several matching methods
 int matchDescriptors( boost::circular_buffer<DataFrame>  *dataBuffer, int descType, int matcherType, int selectorType)
 
@@ -101,8 +94,8 @@ int descKeypoints(boost::circular_buffer<DataFrame> *dataBuffer,  int descType)
     case 4: //AKAZE_:
         descriptor = cv::AKAZE::create();break;
     case 5: // SIFT_:
-        //descriptor = cv::SIFT::create();break;
-        descriptor = cv::xfeatures2d::SIFT::create();break;
+        descriptor = cv::SIFT::create();break;
+        //descriptor = cv::xfeatures2d::SIFT::create();break;
     default:;
         return -1;
     }
@@ -156,8 +149,8 @@ int detKeypointsModern(std::vector<cv::KeyPoint> &keypoints, cv::Mat &img,  int 
     case 5: //AKAZE:
         detector = cv::AKAZE::create();break;
     case 6: //SIFT:
-       //detector = cv::SIFT::create();break;
-       detector = cv::xfeatures2d::SIFT::create();break;
+       detector = cv::SIFT::create();break;
+       //detector = cv::xfeatures2d::SIFT::create();break;
     default: return -1 ;
     }
 
@@ -293,198 +286,7 @@ double show3DObjects(std::vector<BoundingBox> &boundingBoxes, cv::Size worldSize
 
  return ret;
 }
-void inityoloData(std::string dataPath, int imgcount){
-
-    string yoloBasePath = dataPath + "dat/yolo/";
-    string yoloClassesFile = yoloBasePath + "coco.names";
-    string yoloModelConfiguration = yoloBasePath + "yolov3.cfg";
-    string yoloModelWeights = yoloBasePath + "yolov3.weights";
-
-    ifstream ifs(yoloClassesFile.c_str());
-    string line;
-    while (getline(ifs, line)) classes.push_back(line);
-
-}
-int detectObjects(string dataPath, cv::Mat& img,boost::circular_buffer<DataFrame> *dataBuffer){
-    double t = (double)cv::getTickCount();
-    // load neural network
-    string yoloModelConfiguration = dataPath + "dat/yolo/yolov3.cfg";
-    string yoloModelWeights = dataPath + "dat/yolo/yolov3.weights";
-    cv::dnn::Net net = cv::dnn::readNetFromDarknet(yoloModelConfiguration, yoloModelWeights);
-
-    net.setPreferableBackend(cv::dnn::DNN_BACKEND_OPENCV);
-    net.setPreferableTarget(cv::dnn::DNN_TARGET_CPU);
-    // net.setPreferableBackend(cv::dnn::DNN_BACKEND_INFERENCE_ENGINE);
-    // net.setPreferableTarget(cv::dnn::DNN_TARGET_OPENCL_FP16);
-    // generate 4D blob from input image
-    cv::Mat blob;
-    vector<cv::Mat> netOutput;
-    double scalefactor = 1/255.0;
-    cv::Size size = cv::Size(416, 416);
-    cv::Scalar mean = cv::Scalar(0,0,0);
-    bool swapRB = false;
-    bool crop = false;
-    cv::dnn::blobFromImage(img, blob, scalefactor, size, mean, swapRB, crop);
-
-    // Get names of output layers
-    vector<cv::String> names;
-    float shrinkFactor = 0.10;
-    vector<int> outLayers = net.getUnconnectedOutLayers(); // get  indices of  output layers, i.e.  layers with unconnected outputs
-    vector<cv::String> layersNames = net.getLayerNames(); // get  names of all layers in the network
-
-    names.resize(outLayers.size());
-    for (size_t i = 0; i < outLayers.size(); ++i) // Get the names of the output layers in names
-        names[i] = layersNames[outLayers[i] - 1];
-
-    // invoke forward propagation through network
-    net.setInput(blob);
-    net.forward(netOutput, names);
-
-    // Scan through all bounding boxes and keep only the ones with high confidence
-    vector<int> classIds; vector<float> confidences; vector<cv::Rect> boxes;
-    for (size_t i = 0; i < netOutput.size(); ++i)
-    {
-        float* data = (float*)netOutput[i].data;
-        for (int j = 0; j < netOutput[i].rows; ++j, data += netOutput[i].cols)
-        {
-            cv::Mat scores = netOutput[i].row(j).colRange(5, netOutput[i].cols);
-            cv::Point classId;
-            double confidence;
-
-            // Get the value and location of the maximum score
-            cv::minMaxLoc(scores, 0, &confidence, 0, &classId);
-            if (confidence > confThreshold)
-            {
-                cv::Rect box; int cx, cy;
-                cx = (int)(data[0] * img.cols);
-                cy = (int)(data[1] * img.rows);
-                box.width = (int)(data[2] * img.cols);
-                box.height = (int)(data[3] * img.rows);
-                box.x = cx - box.width/2; // left
-                box.y = cy - box.height/2; // top
-
-                boxes.push_back(box);
-                classIds.push_back(classId.x);
-                confidences.push_back((float)confidence);
-            }
-        }
-    }
-
-    // perform non-maxima suppression
-    vector<int> indices;
-    cv::dnn::NMSBoxes(boxes, confidences, confThreshold, nmsThreshold, indices);
-    for(auto it=indices.begin(); it!=indices.end(); ++it) {
-
-        BoundingBox bBox;
-        cv::Rect smallerBox;
-        bBox.roi = boxes[*it];
-        smallerBox.x = bBox.roi.x + shrinkFactor * bBox.roi.width / 2.0;
-        smallerBox.y = bBox.roi.y + shrinkFactor * bBox.roi.height / 2.0;
-        smallerBox.width = bBox.roi.width * (1 - shrinkFactor);
-        smallerBox.height = bBox.roi.height * (1 - shrinkFactor);
-        bBox.shrinkroi=smallerBox;
-        bBox.classID = classIds[*it];
-        bBox.confidence = confidences[*it];
-        bBox.boxID = (int)(dataBuffer->end() - 1)->boundingBoxes.size(); // zero-based unique identifier for this bounding box
-        (dataBuffer->end() - 1)->boundingBoxes.push_back(bBox);
-    }
-
-    // show results
-    if(false) {
-        cv::Mat visImg = img.clone();
-        for(auto it=(dataBuffer->end() - 1)->boundingBoxes.begin(); it!=(dataBuffer->end() - 1)->boundingBoxes.end(); ++it) {
-
-            // Draw rectangle displaying the bounding box
-            int top, left, width, height;
-            top = (*it).roi.y;
-            left = (*it).roi.x;
-            width = (*it).roi.width;
-            height = (*it).roi.height;
-            cv::rectangle(visImg, cv::Point(left, top), cv::Point(left+width, top+height),cv::Scalar(0, 255, 0), 2);
-            top = (*it).shrinkroi.y;
-            left = (*it).shrinkroi.x;
-            width = (*it).shrinkroi.width;
-            height = (*it).shrinkroi.height;
-            cv::rectangle(visImg, cv::Point(left, top), cv::Point(left+width, top+height),cv::Scalar(0, 255, 0), 2);
-
-            string label = cv::format("%.2f", (*it).confidence);
-            label = classes[((*it).classID)] + ":" + label;
-
-            // Display label at the top of the bounding box
-            int baseLine;
-            cv::Size labelSize = getTextSize(label, cv::FONT_ITALIC, 0.5, 1, &baseLine);
-            top = max(top, labelSize.height);
-            rectangle(visImg, cv::Point(left, top - round(1.5*labelSize.height)), cv::Point(left + round(1.5*labelSize.width), top + baseLine), cv::Scalar(255, 255, 255), cv::FILLED);
-            cv::putText(visImg, label, cv::Point(left, top), cv::FONT_ITALIC, 0.75, cv::Scalar(0,0,0),1);
-        }
-
-        string windowName = "Object classification";
-        cv::namedWindow( windowName, 1 );
-        cv::imshow( windowName, visImg );
-        cv::waitKey(100); // wait for key to be pressed
-    }
-
-    t = ((double)cv::getTickCount() - t) / cv::getTickFrequency();
-    return 1000 * t / 1.0;
-}
 
 
-void showLidarImgOverlay(cv::Mat &img, std::vector<LidarPoint> &lidarPoints, cv::Mat &P_rect_xx, cv::Mat &R_rect_xx, cv::Mat &RT, cv::Mat *extVisImg)
-{
-    // init image for visualization
-    cv::Mat visImg;
-    if(extVisImg==nullptr)
-    {
-        visImg = img.clone();
-    } else
-    {
-        visImg = *extVisImg;
-    }
 
-    cv::Mat overlay = visImg.clone();
-
-    // find max. x-value
-    double maxVal = 0.0;
-    for(auto it=lidarPoints.begin(); it!=lidarPoints.end(); ++it)
-    {
-        maxVal = maxVal<it->x ? it->x : maxVal;
-    }
-
-    cv::Mat X(4,1,cv::DataType<double>::type);
-    cv::Mat Y(3,1,cv::DataType<double>::type);
-    for(auto it=lidarPoints.begin(); it!=lidarPoints.end(); ++it) {
-
-            X.at<double>(0, 0) = it->x;
-            X.at<double>(1, 0) = it->y;
-            X.at<double>(2, 0) = it->z;
-            X.at<double>(3, 0) = 1;
-
-            Y = P_rect_xx * R_rect_xx * RT * X;
-            cv::Point pt;
-
-            pt.x = Y.at<double>(0, 0) / Y.at<double>(2, 0);
-            pt.y = Y.at<double>(1, 0) / Y.at<double>(2, 0);
-
-            float val = it->x;
-            int red = min(255, (int)(255 * abs((val - maxVal) / maxVal)));
-            int green = min(255, (int)(255 * (1 - abs((val - maxVal) / maxVal))));
-            cv::circle(overlay, pt, 5, cv::Scalar(0, green, red), -1);
-    }
-
-    float opacity = 0.6;
-    cv::addWeighted(overlay, opacity, visImg, 1 - opacity, 0, visImg);
-
-    // return augmented image or wait if no image has been provided
-    if (extVisImg == nullptr)
-    {
-        string windowName = "LiDAR data on image overlay";
-        cv::namedWindow( windowName, 3 );
-        cv::imshow( windowName, visImg );
-        cv::waitKey(0); // wait for key to be pressed
-    }
-    else
-    {
-        extVisImg = &visImg;
-    }
-}
 

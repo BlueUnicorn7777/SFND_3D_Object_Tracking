@@ -30,11 +30,5 @@ int detKeypointsModern(std::vector<cv::KeyPoint> &keypoints, cv::Mat &img, int d
 int descKeypoints(boost::circular_buffer<DataFrame> *dataBuffer,  int descType);
 int matchDescriptors( boost::circular_buffer<DataFrame>  *dataBuffer,  int descType, int matcherType, int selectorType);
 double show3DObjects(std::vector<BoundingBox> &boundingBoxes, cv::Size worldSize, cv::Size imageSize, std::string windowName);
-int detectObjects(std::string dataPath, cv::Mat& img,boost::circular_buffer<DataFrame> *dataBuffer);
-void showLidarImgOverlay(cv::Mat &img, std::vector<LidarPoint> &lidarPoints, cv::Mat &P_rect_xx, cv::Mat &R_rect_xx, cv::Mat &RT, cv::Mat *extVisImg);
-//void matchDescriptors(std::vector<cv::KeyPoint> &kPtsSource, std::vector<cv::KeyPoint> &kPtsRef, cv::Mat &descSource, cv::Mat &descRef,
-//                      std::vector<cv::DMatch> &matches, std::string descriptorType, std::string matcherType, std::string selectorType);
-
-void inityoloData(std::string dataPath, int imgcount);
 
 #endif /* matching2D_hpp */
