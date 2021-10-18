@@ -25,8 +25,8 @@
 1. Clone this repo.
 2. Make a build directory in the top level project directory: `mkdir build && cd build`
 3. Compile: `cmake .. && make`
-4. Run it: `./3D_object_tracking ../ true`.    
-5. ../ is the location for the SFND_3D_Object_Tracking folder
+4. Run it: `./3D_object_tracking `    
+
 
 ## Write Up and Data 
 1. Find the data and write up in Data/ folder
