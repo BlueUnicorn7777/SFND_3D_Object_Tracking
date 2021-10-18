@@ -21,19 +21,21 @@ const string SelectorTypes[]={"SEL_NN     ","SEL_KNN    "};
 int main(int argc, const char *argv[])
 {
     if(argc<3){
-        std::cout<<"Please specify the following arguments to execute \n"<<
-                   "./2D_feature_tracking path bVis\n"
-                   " path = path to image folder\n"
-                   "bVis = true , false , avg \n" ;
-        return 0;
+//        std::cout<<"Please specify the following arguments to execute \n"<<
+//                   "./2D_feature_tracking path bVis\n"
+//                   " path = path to image folder\n"
+//                   "bVis = true , false , avg \n" ;
+//        return 0;
     }
+    bool bVis =true;
 
     int imgStartIndex = 0; // first file index to load (assumes Lidar and camera names have identical naming convention)
     int imgEndIndex = 77;   // last file index to load
     int dataBufferSize = 2;       // no. of images which are held in memory (ring buffer) at the same time
 
-    helper HelperClass(argv[1],imgEndIndex);
+   // helper HelperClass(argv[1],imgEndIndex);
 
+    helper HelperClass("../",imgEndIndex);
 
     cout<<"MacherTypes\tSelectorTypes\tDetectorType\tdescriptorType\t"
           "FrameNo\tProcessing Time(ms)\tTTC_Lidar(s) \tTTC_Camera (s) \t Difference (s)\t Abs Difference (s) \n";
@@ -57,7 +59,8 @@ int main(int argc, const char *argv[])
                             if (dataBuffer.size() > 1) { // wait until at least two images have been processed
                                 total_time+= HelperClass.matchDescriptors_helper(&dataBuffer, Descriptor, matcherType, selectorType);
                                 total_time+= HelperClass.matchBoundingBoxes_helper(&dataBuffer);
-                                total_time+= HelperClass.estimateTTC(&dataBuffer,!strcmp(argv[2],"true"));
+                               // total_time+= HelperClass.estimateTTC(&dataBuffer,!strcmp(argv[2],"true"));
+                                total_time+= HelperClass.estimateTTC(&dataBuffer,bVis);
                             }
 
                         }
