@@ -94,7 +94,7 @@ int helper::estimateTTC(boost::circular_buffer<DataFrame> *dataBuffer , bool bVi
         }
 
         // compute TTC for current match
-        if( currBB->lidarPoints.size()>0 && prevBB->lidarPoints.size()>100 ) // only compute TTC if we have Lidar points
+        if( currBB->lidarPoints.size()>100 && prevBB->lidarPoints.size()>100 ) // only compute TTC if we have Lidar points
         {
             (dataBuffer->end()-1)->ttcLidar=computeTTCLidar( sensorFrameRate,prevBB,currBB);
             (dataBuffer->end()-1)->ttcCamera = computeTTCCamera(sensorFrameRate, dataBuffer,prevBB,currBB);

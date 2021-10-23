@@ -27,7 +27,7 @@ int main(int argc, const char *argv[])
 //                   "bVis = true , false , avg \n" ;
 //        return 0;
     }
-    bool bVis =true;
+    bool bVis =false;
 
     int imgStartIndex = 0; // first file index to load (assumes Lidar and camera names have identical naming convention)
     int imgEndIndex = 77;   // last file index to load
@@ -42,7 +42,7 @@ int main(int argc, const char *argv[])
 
     for(int matcherType=0;matcherType<2;matcherType++){ //MAT_BF , MAT_FLANN 2
         for(int selectorType=0 ;selectorType<2;selectorType++){ //SEL_NN , SEL_KNN 2
-            for(int detector = 0 ; detector<6 ;detector++){ //Dtector Loop 7
+            for(int detector = 0 ; detector<7 ;detector++){ //Dtector Loop 7
                 for(int Descriptor = 0 ; Descriptor<6;Descriptor++){ //descriptor Loop 6
                     boost::circular_buffer<DataFrame> dataBuffer(dataBufferSize);
 

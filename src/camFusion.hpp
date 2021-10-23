@@ -14,6 +14,6 @@
     void show3DObjects(std::vector<BoundingBox> &boundingBoxes, cv::Size worldSize, cv::Size imageSize, bool bWait=true);
     float computeTTCCamera(double sensorFrameRate,boost::circular_buffer<DataFrame> *dataBuffer,BoundingBox *prevBB,BoundingBox *currBB);
     float computeTTCLidar( double sensorFrameRate,BoundingBox *prevBB,BoundingBox *currBB);
-    float meanLidarPoint(std::vector<LidarPoint> &lidarPoints , std::string windowName);
+    //float meanLidarPoint(std::vector<LidarPoint> &lidarPoints , std::string windowName);
 
 #endif /* camFusion_hpp */

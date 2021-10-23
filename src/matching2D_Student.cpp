@@ -94,8 +94,8 @@ int descKeypoints(boost::circular_buffer<DataFrame> *dataBuffer,  int descType)
     case 4: //AKAZE_:
         descriptor = cv::AKAZE::create();break;
     case 5: // SIFT_:
-       // descriptor = cv::SIFT::create();break;
-        descriptor = cv::xfeatures2d::SIFT::create();break;
+        //descriptor = cv::SIFT::create();break;
+       descriptor = cv::xfeatures2d::SIFT::create();break;
     default:;
         return -1;
     }

@@ -143,6 +143,41 @@ void clusterKptMatchesWithROI(BoundingBox &boundingBox, std::vector<cv::KeyPoint
 
 // Compute time-to-collision (TTC) based on keypoint correspondences in successive images
 
+int median(int l, int r)
+{
+    return (r - l + 2) / 2 - 1 + l;
+}
+
+float IQR_median(vector<double> &distRatios)
+{
+
+    std::sort(distRatios.begin(), distRatios.end());
+    int mid_index = median(0, distRatios.size());
+    double Q1 = distRatios[median(0, mid_index)];
+    double Q3 = distRatios[median(mid_index + 1, distRatios.size())];
+    double lowerLimit = Q1 - 1.5 * (Q3-Q1);
+    double upperLimit = Q3 + 1.5 * (Q3-Q1);
+    std::vector<double> xPoints;
+    for (double P : distRatios)
+    {
+        if((P >upperLimit)||(P<lowerLimit))continue;
+        xPoints.push_back(P);
+    }
+    if (xPoints.size()==0) return NAN;
+    mid_index = median(0, xPoints.size());
+    float medDist = xPoints.size() % 2 == 0 ? (xPoints.at(mid_index - 1) + xPoints.at(mid_index) )/ 2.0 : xPoints.at(mid_index); // compute median dist. ratio to remove outlier influence
+    return medDist;
+}
+float IQR_median(std::vector<LidarPoint> &lidarPoints)
+{
+    std::vector<double> xPoints;
+    for (LidarPoint P : lidarPoints)
+    {
+        xPoints.push_back(P.x);
+    }
+    return IQR_median(xPoints);
+}
+
 float computeTTCCamera(double sensorFrameRate,boost::circular_buffer<DataFrame> *dataBuffer,BoundingBox *prevBB,BoundingBox *currBB){
 
       vector<double> distRatios;
@@ -182,22 +217,19 @@ float computeTTCCamera(double sensorFrameRate,boost::circular_buffer<DataFrame> 
            return NAN;
 
        }
-
-       std::sort(distRatios.begin(), distRatios.end());
-       long medIndex = floor(distRatios.size() / 2.0);
-       double medDistRatio = distRatios.size() % 2 == 0 ? (distRatios[medIndex - 1] + distRatios[medIndex]) / 2.0 : distRatios[medIndex]; // compute median dist. ratio to remove outlier influence
+       double medDistRatio=IQR_median(distRatios);
        double  dT = 1 / sensorFrameRate;
        return -dT / (1 - medDistRatio);
-
 }
 
 float computeTTCLidar(double sensorFrameRate, BoundingBox *prevBB,BoundingBox *currBB){
    //cout<< " prev ";
-   double d0 = meanLidarPoint(prevBB->lidarPoints,"PREV");
+   double d0 = IQR_median(prevBB->lidarPoints);
    //cout << "curr ";
-   double d1 = meanLidarPoint(currBB->lidarPoints,"CURR");
+   double d1 = IQR_median(currBB->lidarPoints);
   // cout << endl;
    return d1 * (1.0 / sensorFrameRate) / (d0 - d1);
+
 }
 
 int matchBoundingBoxes(boost::circular_buffer<DataFrame> *dataBuffer)
@@ -207,10 +239,6 @@ int matchBoundingBoxes(boost::circular_buffer<DataFrame> *dataBuffer)
     for(auto bbx:(dataBuffer->end()-1)->boundingBoxes){bbx.kptMatches.clear();}
     int prev_to_curr[(dataBuffer->end()-2)->boundingBoxes.size()][(dataBuffer->end()-1)->boundingBoxes.size()];
     memset( prev_to_curr, 0, sizeof(prev_to_curr) );
-//    for(unsigned long k = 0 ; k< (dataBuffer->end()-2)->boundingBoxes.size();k++)
-//        for(unsigned long l = 0 ; l< (dataBuffer->end()-1)->boundingBoxes.size(); l++)
-//            prev_to_curr[k][l]=0;
-
     for (cv::DMatch match : (dataBuffer->end()-1)->kptMatches) {
         unsigned long bb_prev =0 ,bb_curr =0;
         vector<vector<BoundingBox>::iterator> enclosingBoxes1,enclosingBoxes2;
@@ -268,40 +296,44 @@ int matchBoundingBoxes(boost::circular_buffer<DataFrame> *dataBuffer)
     return 1000 * t / 1.0;
 }
 
-float meanLidarPoint(std::vector<LidarPoint> &lidarPoints , string windowName)
-{
+// Original code of outlier removal and getting average lidar distance
+//float meanLidarPoint(std::vector<LidarPoint> &lidarPoints , string windowName)
+//{
 
-    double dataSum{0};
-    for(LidarPoint P : lidarPoints){dataSum+=P.x;}
-    double dataMean = dataSum / lidarPoints.size();
-    double dataVariance{0};
-    double dataStd{0};
-    for(LidarPoint P : lidarPoints){
-        dataVariance += pow((P.x - dataMean), 2);
-    }
-     dataVariance = dataVariance / (lidarPoints.size() - 1);
-    dataStd = sqrt(dataVariance);
-    double upperLimit = dataMean + dataStd;
-    double lowerLimit = dataMean - dataStd;
-    dataSum=0;
-    int  count = 0 ;
-    float min =1e8;
-    std::vector<BoundingBox> boundingBoxes;
-    boundingBoxes.push_back(*new BoundingBox);
+//    double dataSum{0};
+//    for(LidarPoint P : lidarPoints){dataSum+=P.x;}
+//    double dataMean = dataSum / lidarPoints.size();
+//    double dataVariance{0};
+//    double dataStd{0};
+//    for(LidarPoint P : lidarPoints){
+//        dataVariance += pow((P.x - dataMean), 2);
+//    }
+//     dataVariance = dataVariance / (lidarPoints.size() - 1);
+//    dataStd = sqrt(dataVariance);
+//    double upperLimit = dataMean + dataStd;
+//    double lowerLimit = dataMean - dataStd;
+//    dataSum=0;
+//    int  count = 0 ;
+//    float min =1e8;
 
-    for (LidarPoint P : lidarPoints)
-    {
-        if((P.x >upperLimit)||(P.x<lowerLimit))continue;
-        boundingBoxes[0].lidarPoints.push_back(P);
-        dataSum+=P.x;
-        count +=1;
-        if (min>P.x)min=P.x;
+//    std::vector<double> xPoints; // Lidar 3D points which project into 2D image roi
 
-    }
-//   cout<<  show3DObjects(boundingBoxes, cv::Size(4.0, 20.0), cv::Size(2000, 2000), windowName) <<
-//          "\t"<<(dataSum/count)<<"\t";
+//    for (LidarPoint P : lidarPoints)
+//    {
+//        if((P.x >upperLimit)||(P.x<lowerLimit))continue;
+//        xPoints.push_back(P.x);
+//        dataSum+=P.x;
+//        count +=1;
+//        if (min>P.x)min=P.x;
 
-   return dataSum /count;
-   // return min;
+//    }
+//   //cout<<  show3DObjects(boundingBoxes, cv::Size(4.0, 20.0), cv::Size(2000, 2000), windowName) <<
+//   //       "\t"<<(dataSum/count)<<"\t";
 
-}
+//    //return dataSum /count;
+//   // return min;
+//    std::sort(xPoints.begin(), xPoints.end());
+//    long medIndex = floor(xPoints.size() / 2.0);
+//    float medDist = xPoints.size() % 2 == 0 ? (xPoints.at(medIndex - 1) + xPoints.at(medIndex) )/ 2.0 : xPoints.at(medIndex); // compute median dist. ratio to remove outlier influence
+//    return medDist;
+//}
