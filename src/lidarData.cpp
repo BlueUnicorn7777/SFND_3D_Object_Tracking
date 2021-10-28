@@ -4,7 +4,7 @@
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include "lidarData.hpp"
-
+#include <numeric>
 
 using namespace std;
 
@@ -32,6 +32,7 @@ lidar::lidar(){
 int lidar::loadLidarFromFile(string filename, boost::circular_buffer<DataFrame> *dataBuffer){
     double t = (double)cv::getTickCount();
     const static float minZ = -1.5, maxZ = -0.9, minX = 2.0, maxX = 20.0, maxY = 2.0, minR = 0.1; // focus on ego lane
+
     // allocate 4 MB buffer (only ~130*4*4 KB are needed)
     unsigned long num = 1000000;
     float *data = (float*)malloc(num*sizeof(float));
@@ -89,6 +90,7 @@ int lidar::loadLidarFromFile(string filename, boost::circular_buffer<DataFrame> 
         }
 
     }
+
 
     t = ((double)cv::getTickCount() - t) / cv::getTickFrequency();
     return 1000 * t / 1.0;

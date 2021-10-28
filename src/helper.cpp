@@ -29,10 +29,12 @@ int helper::readImage(int imgIndex,boost::circular_buffer<DataFrame> *dataBuffer
     double t = (double)cv::getTickCount();
     cv::Mat img ,imgGray;
     img = cv::imread(cameraFilesNames[imgIndex]);
+
     cv::cvtColor(img, imgGray, cv::COLOR_BGR2GRAY);
     // push image into data frame buffer
     DataFrame frame;
     frame.cameraImg = imgGray;
+    //frame.cameraImg_color=img;
     dataBuffer->push_back(frame);
     objDetector_.detectObjects(img,dataBuffer);
     Lidar_.loadLidarFromFile(LidarFilesNames[imgIndex],dataBuffer);
@@ -96,13 +98,22 @@ int helper::estimateTTC(boost::circular_buffer<DataFrame> *dataBuffer , bool bVi
         // compute TTC for current match
         if( currBB->lidarPoints.size()>100 && prevBB->lidarPoints.size()>100 ) // only compute TTC if we have Lidar points
         {
+
             (dataBuffer->end()-1)->ttcLidar=computeTTCLidar( sensorFrameRate,prevBB,currBB);
+            clusterKptMatchesWithROI(*currBB);
             (dataBuffer->end()-1)->ttcCamera = computeTTCCamera(sensorFrameRate, dataBuffer,prevBB,currBB);
 
             if (bVis)
             {
                 cv::Mat visImg = (dataBuffer->end() - 1)->cameraImg.clone();
                 Lidar_.showLidarImgOverlay(visImg, currBB->lidarPoints, &visImg);
+
+//                cv::drawMatches((dataBuffer->end() - 2)->cameraImg_color, (dataBuffer->end() - 2)->keypoints,
+//                                (dataBuffer->end() - 1)->cameraImg_color, (dataBuffer->end() - 1)->keypoints,
+//                                currBB->kptMatches, visImg,
+//                                cv::Scalar::all(-1), cv::Scalar::all(-1),
+//                                std::vector<char>(), cv::DrawMatchesFlags::DEFAULT);
+
                 cv::rectangle(visImg, cv::Point(currBB->roi.x, currBB->roi.y), cv::Point(currBB->roi.x + currBB->roi.width, currBB->roi.y + currBB->roi.height), cv::Scalar(0, 255, 0), 2);
                 char str[200];
                 sprintf(str, "TTC Lidar : %f s, TTC Camera : %f s", (dataBuffer->end() - 1)->ttcLidar, (dataBuffer->end() - 1)->ttcCamera);
@@ -114,7 +125,7 @@ int helper::estimateTTC(boost::circular_buffer<DataFrame> *dataBuffer , bool bVi
                 cv::moveWindow(windowName, 20, 20);
                 cv::resizeWindow(windowName, 800, 600);
                 cv::imshow(windowName, visImg);
-                cv::waitKey(100);
+                cv::waitKey(1);
 
             }
 

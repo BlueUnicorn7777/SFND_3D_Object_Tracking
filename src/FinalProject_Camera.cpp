@@ -66,6 +66,7 @@ int main(int argc, const char *argv[])
                         }
                         else{
                             total_time = -1000;}
+
                         cout<<MatcherTypes[matcherType]<<"\t"<<SelectorTypes[selectorType]<<"\t"<<DetectorTypes[detector]<<"\t"<<DescreptorTypes[Descriptor]<<"\t"
                            <<imgIndex<<"\t"<< total_time/1000<<"\t"<<(dataBuffer.end()-1)->ttcLidar<<"\t"<<(dataBuffer.end()-1)->ttcCamera<<
                              "\t"<<(dataBuffer.end()-1)->ttcLidar-(dataBuffer.end()-1)->ttcCamera <<"\t"<<
